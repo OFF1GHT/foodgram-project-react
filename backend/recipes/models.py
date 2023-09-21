@@ -29,10 +29,10 @@ class Recipe(models.Model):
         CustomUser, on_delete=models.CASCADE, related_name='recipes', blank=False,
     )
     text = models.TextField(blank=False,)
-    ingredients = forms.ModelMultipleChoiceField(
-        queryset=Ingredient.objects.all(),
-        widget=forms.CheckboxSelectMultiple,
+    ingredients = models.ManyToManyField(
+        Ingredient,
         blank=False,
+        related_name='recipes',
     )
     tags = models.ManyToManyField(
         Tag,
