@@ -4,9 +4,9 @@ from djoser.serializers import UserSerializer
 from api.fields import Base64ImageField
 from rest_framework.fields import SerializerMethodField
 from django.db.models import F
+from django.core.exceptions import ValidationError
 
-
-from recipes.models import Tag, Ingredient, Recipe, Favorite, ShoppingList, RecipeIngredient
+from recipes.models import Tag, Ingredient, Recipe, Favorite, ShoppingCart, RecipeIngredient
 from users.models import CustomUser, Subscribe
 
 
@@ -32,17 +32,22 @@ class TagSerializer(serializers.ModelSerializer):
 
 class IngredientSerializer(serializers.ModelSerializer):
     class Meta:
-        fields = '__all__'
+        fields = ('id', 'name', 'measurement_unit')
         model = Ingredient
+
+    def to_representation(self, instance):
+        representation = super().to_representation(instance)
+        representation['name'] = representation['name'].capitalize()
+        return representation
 
 
 class RecipeCreateSerializer(serializers.ModelSerializer):
     image = Base64ImageField()
     tags = serializers.PrimaryKeyRelatedField(
         many=True,
-        queryset=Tag.objects.all())
-    ingredients = IngredientSerializer(
-        many=True)
+        queryset=Tag.objects.all()
+    )
+    ingredients = IngredientSerializer(many=True)
     author = CustomUserSerializer(read_only=True)
 
     class Meta:
@@ -94,12 +99,12 @@ class RecipeCreateSerializer(serializers.ModelSerializer):
 
     def update(self, instance, validated_data):
         ingredients_data = validated_data.pop('ingredients', None)
-        tags_data = validated_data.pop('tags', None)
+        tags  = validated_data.pop('tags')
         if ingredients_data is not None:
             instance.ingredients.clear()
             self.create_ingredients(ingredients_data, instance)
-        if tags_data is not None:
-            instance.tags.set(tags_data)
+        if tags is not None:
+            instance.tags.set(tags)
         return super().update(instance, validated_data)
 
 
@@ -107,17 +112,18 @@ class RecipeReadSerializer(serializers.ModelSerializer):
     tags = TagSerializer(many=True)
     image = Base64ImageField()
     author = UserSerializer(read_only=True)
-    ingredients = IngredientSerializer(many=True)
+    ingredients = IngredientSerializer()
     is_favorited = SerializerMethodField(read_only=True)
     is_in_shopping_cart = SerializerMethodField(read_only=True)
 
     class Meta:
         fields = (
+            'id',
             'image',
             'author',
             'ingredients',
             'tags',
-            'time'
+            'time',
             'is_favorited',
             'is_in_shopping_cart',
             'name',
@@ -146,9 +152,10 @@ class RecipeReadSerializer(serializers.ModelSerializer):
     def get_is_in_shopping_cart(self, obj):
         request = self.context['request']
         if request and request.user.is_authenticated:
-            is_in_cart = ShoppingList.objects.filter(user=request.user, recipe=obj).exists()
+            is_in_cart = ShoppingCart.objects.filter(user=request.user, recipe=obj).exists()
             return is_in_cart
         return False
+
 
 class FavoriteSerializer(serializers.ModelSerializer):
     class Meta:
@@ -164,4 +171,51 @@ class RecipeIngredientSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = RecipeIngredient
-        fields = ('id', 'name', 'measurement_unit', 'amount',)
+        fields = ('id', 'name', 'measurement_unit', 'amount')
+
+    def validate_amount(self, value):
+        """Проверяем, что количество ингредиента больше 0."""
+
+        if value <= 0:
+            raise ValidationError(
+                'Количество ингредиента должно быть больше 0'
+            )
+        return value
+
+
+class AddIngredientRecipeSerializer(serializers.ModelSerializer):
+    """
+    Сериализатор для добавления ингредиентов в рецепт.
+    """
+
+    id = serializers.IntegerField(source='ingredient.id')
+    amount = serializers.IntegerField()
+
+    class Meta:
+        model = RecipeIngredient
+        fields = ('id', 'amount')
+
+    def validate_amount(self, value):
+        """Проверяем, что количество ингредиента больше 0."""
+
+        if value <= 0:
+            raise ValidationError(
+                'Количество ингредиента должно быть больше 0'
+            )
+        return value
+
+    def validate(self, attrs):
+        """
+        Проверяем, что ингредиент не добавлен уже в рецепт.
+        """
+
+        request = self.context.get('request')
+        recipe_id = request.GET.get('recipe')
+        ingredient_id = attrs['ingredient']['id']
+        existing_ingredients = RecipeIngredient.objects.filter(
+            recipe_id=recipe_id,
+            ingredient_id=ingredient_id
+        )
+        if existing_ingredients.exists():
+            raise ValidationError('Ингредиент уже добавлен в рецепт')
+        return attrs

@@ -1,12 +1,10 @@
-from rest_framework import generics, permissions
-from recipes.models import Tag, Ingredient, Recipe, Favorite, ShoppingList, RecipeIngredient
+from recipes.models import Tag, Ingredient, Recipe, Favorite, ShoppingCart
 from users.models import Subscribe, CustomUser
 from .serializers import (
     TagSerializer,
     IngredientSerializer,
     RecipeReadSerializer,
     RecipeCreateSerializer,
-    RecipeIngredientSerializer,
     CustomUserSerializer
 )
 from rest_framework.permissions import SAFE_METHODS
@@ -22,18 +20,24 @@ from reportlab.lib.pagesizes import letter
 from reportlab.pdfgen import canvas
 from django.http import HttpResponse
 from djoser.views import viewsets, UserViewSet
+from .filters import IngredientFilter
+from django_filters.rest_framework import DjangoFilterBackend
 
 User = get_user_model()
 
 class TagViewSet(viewsets.ReadOnlyModelViewSet):
     queryset = Tag.objects.all()
     serializer_class = TagSerializer
+    pagination_class = None
 
 
 class IngredientViewSet(viewsets.ModelViewSet):
     queryset = Ingredient.objects.all()
     serializer_class = IngredientSerializer
+    filter_backends = [DjangoFilterBackend]
+    filterset_class = IngredientFilter
     search_fields = ('^name',)
+    pagination_class = None
 
 
 class RecipeViewSet(viewsets.ModelViewSet):
@@ -65,9 +69,9 @@ class RecipeViewSet(viewsets.ModelViewSet):
     def add_to_shopping_cart(request, id):
         recipe = get_object_or_404(Recipe, id=id)
         user = request.user
-        if ShoppingList.objects.filter(user=user, recipe=recipe).exists():
+        if ShoppingCart.objects.filter(user=user, recipe=recipe).exists():
             return Response({'detail': 'Рецепт уже добавлен в список покупок.'}, status=status.HTTP_400_BAD_REQUEST)
-        ShoppingList.objects.create(user=user, recipe=recipe)
+        ShoppingCart.objects.create(user=user, recipe=recipe)
         serializer = RecipeReadSerializer(recipe)
         return Response(serializer.data, status=status.HTTP_201_CREATED)
     
@@ -76,7 +80,7 @@ class RecipeViewSet(viewsets.ModelViewSet):
     def remove_from_shopping_cart(request, id):
         recipe = get_object_or_404(Recipe, id=id)
         user = request.user
-        shopping_item = ShoppingList.objects.filter(user=user, recipe=recipe)
+        shopping_item = ShoppingCart.objects.filter(user=user, recipe=recipe)
         if not shopping_item.exists():
             return Response({'errors': 'Рецепт не найден в списке покупок.'}, status=status.HTTP_400_BAD_REQUEST)
         shopping_item.delete()
@@ -86,7 +90,7 @@ class RecipeViewSet(viewsets.ModelViewSet):
     @permission_classes([IsAuthenticated])
     def download_shopping_cart_pdf(request):
         user = request.user
-        shopping_list_data = ShoppingList.objects.filter(user=user)
+        shopping_list_data = ShoppingCart.objects.filter(user=user)
 
         if not shopping_list_data.exists():
             return Response({'detail': 'Список покупок пуст.'}, status=400)
