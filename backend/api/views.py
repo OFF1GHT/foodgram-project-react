@@ -1,11 +1,14 @@
-from recipes.models import Tag, Ingredient, Recipe, Favorite, ShoppingCart
+from recipes.models import Tag, Ingredient, Recipe, Favorite, ShoppingCart, RecipeIngredient
 from users.models import Subscribe, CustomUser
 from .serializers import (
     TagSerializer,
     IngredientSerializer,
     RecipeReadSerializer,
     RecipeCreateSerializer,
-    CustomUserSerializer
+    CustomUserSerializer,
+    ShoppingCartSerializer,
+    FavoriteSerializer,
+    SubscriptionSerializer
 )
 from rest_framework.permissions import SAFE_METHODS
 from rest_framework import status
@@ -22,6 +25,10 @@ from django.http import HttpResponse
 from djoser.views import viewsets, UserViewSet
 from .filters import IngredientFilter
 from django_filters.rest_framework import DjangoFilterBackend
+from django.db.models import Sum
+from datetime import datetime
+from rest_framework.status import HTTP_400_BAD_REQUEST
+from .utils import create_shopping_list_report
 
 User = get_user_model()
 
@@ -46,6 +53,8 @@ class RecipeViewSet(viewsets.ModelViewSet):
     def get_serializer_class(self):
         if self.request.method in SAFE_METHODS:
             return RecipeReadSerializer
+        elif self.action == 'add_to_shopping_cart':
+            return ShoppingCartSerializer
         return RecipeCreateSerializer
     
     def perform_create(self, serializer):
@@ -63,58 +72,52 @@ class RecipeViewSet(viewsets.ModelViewSet):
             Favorite.objects.filter(user=user, recipe=recipe).delete()
         serializer = RecipeReadSerializer(recipe, context={'request': request})
         return Response(serializer.data, status=status.HTTP_200_OK)
-
-    @api_view(['POST'])
-    @permission_classes([IsAuthenticated])
-    def add_to_shopping_cart(request, id):
-        recipe = get_object_or_404(Recipe, id=id)
-        user = request.user
-        if ShoppingCart.objects.filter(user=user, recipe=recipe).exists():
-            return Response({'detail': 'Рецепт уже добавлен в список покупок.'}, status=status.HTTP_400_BAD_REQUEST)
-        ShoppingCart.objects.create(user=user, recipe=recipe)
-        serializer = RecipeReadSerializer(recipe)
-        return Response(serializer.data, status=status.HTTP_201_CREATED)
     
-    @api_view(['DELETE'])
-    @permission_classes([IsAuthenticated])
-    def remove_from_shopping_cart(request, id):
-        recipe = get_object_or_404(Recipe, id=id)
-        user = request.user
-        shopping_item = ShoppingCart.objects.filter(user=user, recipe=recipe)
-        if not shopping_item.exists():
-            return Response({'errors': 'Рецепт не найден в списке покупок.'}, status=status.HTTP_400_BAD_REQUEST)
-        shopping_item.delete()
-        return Response(status=status.HTTP_204_NO_CONTENT)
-    
-    @api_view(['GET'])
-    @permission_classes([IsAuthenticated])
-    def download_shopping_cart_pdf(request):
-        user = request.user
-        shopping_list_data = ShoppingCart.objects.filter(user=user)
+    @action(detail=True, methods=['POST', 'DELETE'],
+            permission_classes=(IsAuthenticated,))
+    def shopping_cart(self, request, pk=None):
+        if request.method == 'POST':
+            recipe = get_object_or_404(Recipe, id=pk)
+            ShoppingCart.objects.create(user=request.user, recipe=recipe)
+            serializer = FavoriteSerializer(recipe)
+            return Response(serializer.data, status=status.HTTP_201_CREATED)
+        if request.method == 'DELETE':
+            recipe = ShoppingCart.objects.filter(user=request.user,
+                                                 recipe__id=pk)
+            if recipe.exists():
+                recipe.delete()
+                return Response(status=status.HTTP_204_NO_CONTENT)
 
-        if not shopping_list_data.exists():
-            return Response({'detail': 'Список покупок пуст.'}, status=400)
+    @action(
+        detail=False,
+        methods=('get',),
+        permission_classes=(IsAuthenticated,),
+    )
+    def download_shopping_cart(self, request):
+        """Скачивание списка покупок."""
 
-        response = HttpResponse(content_type='application/pdf')
-        response['Content-Disposition'] = 'attachment; filename="shopping_list.pdf"'
-
-        pdf = canvas.Canvas(response, pagesize=letter)
-        pdf.drawString(100, 750, "Shopping List")
-
-        y = 700
-        for item in shopping_list_data:
-            pdf.drawString(100, y, f"{item.recipe.name}: {item.amount}")
-            y -= 20
-
-        pdf.showPage()
-        pdf.save()
-
+        shopping_cart = ShoppingCart.objects.filter(user=self.request.user)
+        buy_list_text = create_shopping_list_report(shopping_cart)
+        response = HttpResponse(buy_list_text, content_type="text/plain")
+        response['Content-Disposition'] = (
+            'attachment; filename=shopping-list.txt'
+        )
         return response
-
 
 class CustomUserViewSet(UserViewSet):
     queryset = CustomUser.objects.all()
 
+    @action(
+        methods=('get',),
+        detail=False,
+        permission_classes=(IsAuthenticated,),
+    )
+    def me(self, request):
+        """Информация о своем аккаунте."""
+
+        serializer = self.get_serializer(request.user)
+        return Response(serializer.data, status=status.HTTP_200_OK)
+        
     @action(detail=True, methods=['POST', 'DELETE'],
             permission_classes=(IsAuthenticated,))
     def subscribe(self, request, id=None):
@@ -132,3 +135,12 @@ class CustomUserViewSet(UserViewSet):
             if subscription.exists():
                 subscription.delete()
                 return Response(status=status.HTTP_204_NO_CONTENT)
+            
+    @action(detail=False, permission_classes=(IsAuthenticated,))
+    def subscriptions(self, request):
+        user = request.user
+        subscribed_authors = CustomUser.objects.filter(subscriber__user=user)
+        pages = self.paginate_queryset(subscribed_authors)
+        serializer = SubscriptionSerializer(pages, many=True,
+                                            context={'request': request})
+        return self.get_paginated_response(serializer.data)

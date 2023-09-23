@@ -5,7 +5,7 @@ from django import forms
 
 class Tag(models.Model):
     """Модель тег"""
-    title = models.CharField(max_length=200)
+    name = models.CharField(max_length=200)
     color = models.CharField(max_length=7, verbose_name='Цвет')
     slug = models.SlugField(max_length=200, unique=True)
 
@@ -39,7 +39,7 @@ class Recipe(models.Model):
         related_name='recipes',
         blank=False,
     )
-    cooking_time = models.TimeField(blank=False)
+    cooking_time = models.PositiveSmallIntegerField(blank=False)
     pub_date = models.DateTimeField(
         'Дата публикации',
         auto_now_add=True,
@@ -93,13 +93,13 @@ class ShoppingCart(models.Model):
         ]
 
 class RecipeIngredient(models.Model):
-    """Модель связи рецепта и ингридиента"""
+    """Модель связи рецепта и ингредиента"""
     recipe = models.ForeignKey(
         Recipe,
         on_delete=models.CASCADE,
         related_name='recipe_ingredients',
     )
-    ingredients = models.ForeignKey(
+    ingredient = models.ForeignKey(
         Ingredient,
         on_delete=models.CASCADE,
         related_name='ingredient_recipes',
