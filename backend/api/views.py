@@ -8,7 +8,8 @@ from .serializers import (
     CustomUserSerializer,
     ShoppingCartSerializer,
     FavoriteSerializer,
-    SubscriptionSerializer
+    SubscriptionSerializer,
+    SubscribeSerializer
 )
 from rest_framework.permissions import SAFE_METHODS
 from rest_framework import status
@@ -121,11 +122,13 @@ class CustomUserViewSet(UserViewSet):
     @action(detail=True, methods=['POST', 'DELETE'],
             permission_classes=(IsAuthenticated,))
     def subscribe(self, request, id=None):
+        """Посписаться"""
+
         if request.method == 'POST':
             user = request.user
             author = self.get_object()
             Subscribe.objects.create(user=user, author=author)
-            serializer = CustomUserSerializer(author,
+            serializer = SubscribeSerializer(author,
                                               context={'request': request})
             return Response(serializer.data, status=status.HTTP_201_CREATED)
         if request.method == 'DELETE':
@@ -136,11 +139,12 @@ class CustomUserViewSet(UserViewSet):
                 subscription.delete()
                 return Response(status=status.HTTP_204_NO_CONTENT)
             
-    @action(detail=False, permission_classes=(IsAuthenticated,))
-    def subscriptions(self, request):
-        user = request.user
-        subscribed_authors = CustomUser.objects.filter(subscriber__user=user)
-        pages = self.paginate_queryset(subscribed_authors)
-        serializer = SubscriptionSerializer(pages, many=True,
-                                            context={'request': request})
+    @action(
+        detail=False,
+        methods=["get"],
+    )
+    def subscriptions(self, serializer):
+        following = Subscribe.objects.filter(user=self.request.user)
+        pages = self.paginate_queryset(following)
+        serializer = SubscriptionSerializer(pages, many=True)
         return self.get_paginated_response(serializer.data)

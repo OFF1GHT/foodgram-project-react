@@ -237,12 +237,43 @@ class ShoppingCartSerializer(serializers.Serializer):
         return shopping_list_item
     
 
+class SubscribeSerializer(serializers.Serializer):
+    """Добавление и удаление подписок пользователя."""
+
+    def validate(self, data):
+        user = self.context.get('request').user
+        author = get_object_or_404(CustomUser, pk=self.context['id'])
+        if user == author:
+            raise serializers.ValidationError(
+                'Вы не можете подписаться на себя'
+            )
+        if Subscribe.objects.filter(user=user, author=author).exists():
+            raise serializers.ValidationError(
+                'Вы уже подписаны на этого пользователя'
+            )
+        return data
+
+    def create(self, validated_data):
+        user = self.context.get('request').user
+        author = get_object_or_404(CustomUser, pk=validated_data['id'])
+        Subscribe.objects.create(user=user, author=author)
+        serializer = SubscriptionSerializer(
+            author, context={'request': self.context.get('request')}
+        )
+        return serializer.data
+    
+
 class SubscriptionSerializer(serializers.ModelSerializer):
     """Сериализатор для просмотрела списка подписок"""
-
+    
+    id = serializers.ReadOnlyField(source="author.id")
+    email = serializers.ReadOnlyField(source="author.email")
+    username = serializers.ReadOnlyField(source="author.username")
+    first_name = serializers.ReadOnlyField(source="author.first_name")
+    last_name = serializers.ReadOnlyField(source="author.last_name")
     is_subscribed = serializers.SerializerMethodField()
     recipes = serializers.SerializerMethodField()
-    recipes_count = serializers.SerializerMethodField()
+    recipes_count = serializers.IntegerField(source='recipes.count')
 
     class Meta:
         model = CustomUser
