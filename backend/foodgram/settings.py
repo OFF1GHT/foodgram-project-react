@@ -8,7 +8,7 @@ SECRET_KEY = 'hhz7l-ltdismtf@bzyz+rple7*s*w$jak%whj@(@u0eok^f9k4'
 
 DEBUG = os.getenv('DEBUG', 'False') == 'True'
 
-ALLOWED_HOSTS = ['localhost', 'example.com']
+ALLOWED_HOSTS = ['158.160.76.74', '127.0.0.1', 'localhost', 'f00dgram.serveblog.net']
 
 AUTH_USER_MODEL = 'users.CustomUser'
 

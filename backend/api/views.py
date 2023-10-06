@@ -9,27 +9,27 @@ from .serializers import (
     ShoppingCartSerializer,
     FavoriteSerializer,
     SubscriptionSerializer,
-    SubscribeSerializer
 )
 from rest_framework.permissions import SAFE_METHODS
 from rest_framework import status
 from django.shortcuts import get_object_or_404
 from django.contrib.auth import get_user_model
 from rest_framework.response import Response
-from rest_framework import viewsets
+from rest_framework import viewsets, permissions
 from rest_framework.decorators import action
 from rest_framework.decorators import api_view, permission_classes
-from rest_framework.permissions import IsAuthenticated
+from rest_framework.permissions import IsAuthenticated, AllowAny
 from reportlab.lib.pagesizes import letter
 from reportlab.pdfgen import canvas
 from django.http import HttpResponse
 from djoser.views import viewsets, UserViewSet
-from .filters import IngredientFilter
+from .filters import IngredientFilter, RecipeFilter
 from django_filters.rest_framework import DjangoFilterBackend
 from django.db.models import Sum
 from datetime import datetime
 from rest_framework.status import HTTP_400_BAD_REQUEST
 from .utils import create_shopping_list_report
+from .paginators import LimitPageNumberPaginator
 
 User = get_user_model()
 
@@ -50,10 +50,14 @@ class IngredientViewSet(viewsets.ModelViewSet):
 
 class RecipeViewSet(viewsets.ModelViewSet):
     queryset = Recipe.objects.all()
+    filter_backends = (DjangoFilterBackend,)
+    filterset_class = RecipeFilter
 
     def get_serializer_class(self):
         if self.request.method in SAFE_METHODS:
             return RecipeReadSerializer
+        elif self.action == 'favorite':
+            return FavoriteSerializer
         elif self.action == 'add_to_shopping_cart':
             return ShoppingCartSerializer
         return RecipeCreateSerializer
@@ -61,7 +65,12 @@ class RecipeViewSet(viewsets.ModelViewSet):
     def perform_create(self, serializer):
         serializer.save(author=self.request.user)
     
-    @action(detail=True, methods=['post', 'delete'])
+    @action(
+        methods=('post', 'delete',),
+        detail=True,
+        serializer_class=FavoriteSerializer,
+        permission_classes=(IsAuthenticated,),
+    )
     def favorite(self, request, pk):
         recipe = get_object_or_404(Recipe, id=pk)
         user = request.user
@@ -71,7 +80,7 @@ class RecipeViewSet(viewsets.ModelViewSet):
             Favorite.objects.create(user=user, recipe=recipe)
         elif request.method == 'DELETE':
             Favorite.objects.filter(user=user, recipe=recipe).delete()
-        serializer = RecipeReadSerializer(recipe, context={'request': request})
+        serializer = FavoriteSerializer(recipe, context={'request': request})
         return Response(serializer.data, status=status.HTTP_200_OK)
     
     @action(detail=True, methods=['POST', 'DELETE'],
@@ -80,7 +89,7 @@ class RecipeViewSet(viewsets.ModelViewSet):
         if request.method == 'POST':
             recipe = get_object_or_404(Recipe, id=pk)
             ShoppingCart.objects.create(user=request.user, recipe=recipe)
-            serializer = FavoriteSerializer(recipe)
+            serializer = ShoppingCartSerializer(recipe)
             return Response(serializer.data, status=status.HTTP_201_CREATED)
         if request.method == 'DELETE':
             recipe = ShoppingCart.objects.filter(user=request.user,
@@ -107,6 +116,8 @@ class RecipeViewSet(viewsets.ModelViewSet):
 
 class CustomUserViewSet(UserViewSet):
     queryset = CustomUser.objects.all()
+    search_fields = ('username',)
+    permission_classes = (AllowAny,)
 
     @action(
         methods=('get',),
@@ -128,7 +139,7 @@ class CustomUserViewSet(UserViewSet):
             user = request.user
             author = self.get_object()
             Subscribe.objects.create(user=user, author=author)
-            serializer = SubscribeSerializer(author,
+            serializer = CustomUserSerializer(author,
                                               context={'request': request})
             return Response(serializer.data, status=status.HTTP_201_CREATED)
         if request.method == 'DELETE':
@@ -138,13 +149,21 @@ class CustomUserViewSet(UserViewSet):
             if subscription.exists():
                 subscription.delete()
                 return Response(status=status.HTTP_204_NO_CONTENT)
-            
+
     @action(
+        methods=('get',),
         detail=False,
-        methods=["get"],
+        serializer_class=SubscriptionSerializer,
+        permission_classes=(IsAuthenticated,),
+        pagination_class=LimitPageNumberPaginator
     )
-    def subscriptions(self, serializer):
-        following = Subscribe.objects.filter(user=self.request.user)
-        pages = self.paginate_queryset(following)
-        serializer = SubscriptionSerializer(pages, many=True)
+    def subscriptions(self, request):
+        """Просмотр подписок пользователя."""
+        user = request.user
+        subscriptions = Subscribe.objects.filter(user=user)
+        users_id = subscriptions.values_list('author_id', flat=True)
+        users = CustomUser.objects.filter(id__in=users_id)
+        paginated_users = self.paginate_queryset(users)
+        serializer = self.serializer_class(paginated_users, many=True, context={'request': request})
         return self.get_paginated_response(serializer.data)
+    
