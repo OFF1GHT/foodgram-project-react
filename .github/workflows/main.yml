@@ -6,43 +6,31 @@ on:
       - '*'
 
 jobs:
-  build_and_push_to_docker_hub:
-    name: Push Docker image to DockerHub
-    runs-on: ubuntu-latest
-    steps:
-      - name: Check out the repo
-        uses: actions/checkout@v3
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v2
-      - name: Login to Docker
-        uses: docker/login-action@v2
-        with:
-          username: ${{ secrets.DOCKER_USERNAME }}
-          password: ${{ secrets.DOCKER_PASSWORD }}
-      - name: Push to DockerHub
-        uses: docker/build-push-action@v4
-        with:
-          context: ./backend/
-          push: true
-          tags: off1ght/foodgram_backend:latest
 
-  frontend_tests:
+  tests:
+    name: PEP8 check
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
-      - name: Set up nodeJS
-        uses: actions/setup-node@v3
+      - name: Set up Python
+        uses: actions/setup-python@v4
         with:
-          node-version: 18
-      - name: Test frontend
+          python-version: 3.8
+      - name: Install dependencies
         run: |
-          cd frontend/
-          npm run test
+          python -m pip install --upgrade pip 
+          pip install flake8 pep8-naming flake8-broken-line flake8-return flake8-isort
+          cd backend/
+          pip install -r requirements.txt
+      - name: Test with flake8
+        run: |
+          python -m flake8 backend
 
-  build_frontend_and_push_to_docker_hub:
-    name: Push frontend Docker image to DockerHub
+  build_and_push_backend_to_docker_hub:
+    name: Pushing backend image to Docker Hub
     runs-on: ubuntu-latest
-    needs: frontend_tests
+    needs:
+      - tests
     steps:
       - name: Check out the repo
         uses: actions/checkout@v3
@@ -53,39 +41,40 @@ jobs:
         with:
           username: ${{ secrets.DOCKER_USERNAME }}
           password: ${{ secrets.DOCKER_PASSWORD }}
-      - name: Push to DockerHub
-        uses: docker/build-push-action@v4
+      - name: Push to Docker Hub
+        uses: docker/build-push-action@v2
         with:
-          context: ./frontend/
+          context: ./backend
           push: true
-          tags: off1ght/foodgram_frontend:latest
+          tags: ${{ secrets.DOCKER_USERNAME }}/foodgram-backend:latest
 
-  build_gateway_and_push_to_docker_hub:
-    name: Push gateway Docker image to DockerHub
+  build_and_push_frontend_to_docker_hub:
+    name: Pushing frontend image to Docker Hub
     runs-on: ubuntu-latest
+    needs:
+      - tests
     steps:
       - name: Check out the repo
         uses: actions/checkout@v3
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v2
       - name: Login to Docker
-        uses: docker/login-action@v2
+        uses: docker/login-action@v1
         with:
           username: ${{ secrets.DOCKER_USERNAME }}
           password: ${{ secrets.DOCKER_PASSWORD }}
-      - name: Push to DockerHub
-        uses: docker/build-push-action@v4
+      - name: Push to Docker Hub
+        uses: docker/build-push-action@v2
         with:
-          context: ./infra/
+          context: ./frontend
           push: true
-          tags: off1ght/foodgram_gateway:latest
+          tags: ${{ secrets.DOCKER_USERNAME }}/foodgram-frontend:latest
 
   deploy:
     runs-on: ubuntu-latest
     needs:
-      - build_and_push_to_docker_hub
-      - build_frontend_and_push_to_docker_hub
-      - build_gateway_and_push_to_docker_hub
+      - build_and_push_backend_to_docker_hub
+      - build_and_push_frontend_to_docker_hub
     steps:
       - name: Checkout repo
         uses: actions/checkout@v3
