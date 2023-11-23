@@ -10,7 +10,7 @@ class Tag(models.Model):
     slug = models.SlugField(max_length=200, unique=True)
 
     def __str__(self):
-        return self.title
+        return self.name
     
 
 class Ingredient(models.Model):
