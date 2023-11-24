@@ -1,6 +1,5 @@
 from django.db import models
 from users.models import CustomUser
-from django import forms
 
 
 class Tag(models.Model):

@@ -1,11 +1,10 @@
+from django.shortcuts import get_object_or_404
+from django.core.exceptions import ValidationError
+from django.db.models import F
 from rest_framework import serializers
-from rest_framework.relations import SlugRelatedField
+from rest_framework.fields import SerializerMethodField
 from djoser.serializers import UserSerializer
 from api.fields import Base64ImageField
-from rest_framework.fields import SerializerMethodField
-from django.db.models import F
-from django.core.exceptions import ValidationError
-from django.shortcuts import get_object_or_404
 
 from recipes.models import (
     Tag,
@@ -15,6 +14,7 @@ from recipes.models import (
     ShoppingCart,
     RecipeIngredient,
 )
+
 from users.models import CustomUser, Subscribe
 
 

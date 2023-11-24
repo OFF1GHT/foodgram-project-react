@@ -1,11 +1,23 @@
+from django.shortcuts import get_object_or_404
+from django.http import HttpResponse
+from django.contrib.auth import get_user_model
+from rest_framework import status
+from rest_framework import viewsets
+from rest_framework.response import Response
+from rest_framework.decorators import action
+from rest_framework.permissions import SAFE_METHODS, IsAuthenticated, AllowAny
+from rest_framework.permissions import SAFE_METHODS
+from djoser.views import UserViewSet
+from django_filters.rest_framework import DjangoFilterBackend
+
 from recipes.models import (
     Tag,
     Ingredient,
     Recipe,
     Favorite,
     ShoppingCart,
-    RecipeIngredient,
 )
+
 from users.models import Subscribe, CustomUser
 from .serializers import (
     TagSerializer,
@@ -17,26 +29,10 @@ from .serializers import (
     FavoriteSerializer,
     SubscriptionSerializer,
 )
-from rest_framework.permissions import SAFE_METHODS
-from rest_framework import status
-from django.shortcuts import get_object_or_404
-from django.contrib.auth import get_user_model
-from rest_framework.response import Response
-from rest_framework import viewsets, permissions
-from rest_framework.decorators import action
-from rest_framework.decorators import api_view, permission_classes
-from rest_framework.permissions import IsAuthenticated, AllowAny
-from reportlab.lib.pagesizes import letter
-from reportlab.pdfgen import canvas
-from django.http import HttpResponse
-from djoser.views import viewsets, UserViewSet
 from .filters import IngredientFilter, RecipeFilter
-from django_filters.rest_framework import DjangoFilterBackend
-from django.db.models import Sum
-from datetime import datetime
-from rest_framework.status import HTTP_400_BAD_REQUEST
 from .utils import create_shopping_list_report
 from .paginators import LimitPageNumberPaginator
+
 
 User = get_user_model()
 
