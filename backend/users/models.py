@@ -1,10 +1,11 @@
 from django.db import models
 from django.contrib.auth.models import AbstractUser
 
+
 class CustomUser(AbstractUser):
     username = models.CharField(max_length=150, unique=True)
     email = models.EmailField(max_length=254, unique=True, db_index=True)
-    first_name  = models.CharField(max_length=150)
+    first_name = models.CharField(max_length=150)
     last_name = models.CharField(max_length=150)
     password = models.CharField(max_length=150)
 
@@ -23,13 +24,13 @@ class CustomUser(AbstractUser):
 class Subscribe(models.Model):
     user = models.ForeignKey(
         CustomUser,
-        on_delete = models.CASCADE,
-        related_name ='subscriber',
+        on_delete=models.CASCADE,
+        related_name='subscriber',
     )
     author = models.ForeignKey(
         CustomUser,
-        on_delete = models.CASCADE,
-        related_name = 'subscribing',
+        on_delete=models.CASCADE,
+        related_name='subscribing',
     )
 
     class Meta:

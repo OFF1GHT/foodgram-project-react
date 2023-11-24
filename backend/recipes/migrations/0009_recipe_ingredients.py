@@ -4,7 +4,6 @@ from django.db import migrations, models
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
         ('recipes', '0008_alter_recipe_options_recipe_pub_date'),
     ]
@@ -13,6 +12,8 @@ class Migration(migrations.Migration):
         migrations.AddField(
             model_name='recipe',
             name='ingredients',
-            field=models.ManyToManyField(related_name='recipes', to='recipes.Ingredient'),
+            field=models.ManyToManyField(
+                related_name='recipes', to='recipes.Ingredient'
+            ),
         ),
     ]

@@ -6,7 +6,6 @@ import django.utils.timezone
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
         ('users', '0002_auto_20230919_1920'),
     ]
@@ -21,16 +20,26 @@ class Migration(migrations.Migration):
         migrations.AddField(
             model_name='customuser',
             name='date_joined',
-            field=models.DateTimeField(default=django.utils.timezone.now, verbose_name='date joined'),
+            field=models.DateTimeField(
+                default=django.utils.timezone.now, verbose_name='date joined'
+            ),
         ),
         migrations.AddField(
             model_name='customuser',
             name='is_active',
-            field=models.BooleanField(default=True, help_text='Designates whether this user should be treated as active. Unselect this instead of deleting accounts.', verbose_name='active'),
+            field=models.BooleanField(
+                default=True,
+                help_text='Designates whether this user should be treated as active. Unselect this instead of deleting accounts.',
+                verbose_name='active',
+            ),
         ),
         migrations.AddField(
             model_name='customuser',
             name='is_staff',
-            field=models.BooleanField(default=False, help_text='Designates whether the user can log into this admin site.', verbose_name='staff status'),
+            field=models.BooleanField(
+                default=False,
+                help_text='Designates whether the user can log into this admin site.',
+                verbose_name='staff status',
+            ),
         ),
     ]

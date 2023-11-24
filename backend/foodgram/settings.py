@@ -8,7 +8,12 @@ SECRET_KEY = 'hhz7l-ltdismtf@bzyz+rple7*s*w$jak%whj@(@u0eok^f9k4'
 
 DEBUG = os.getenv('DEBUG', 'False') == 'True'
 
-ALLOWED_HOSTS = ['158.160.5.188', '127.0.0.1', 'localhost', 'f00dgram.serveblog.net']
+ALLOWED_HOSTS = [
+    '158.160.5.188',
+    '127.0.0.1',
+    'localhost',
+    'f00dgram.serveblog.net',
+]
 
 AUTH_USER_MODEL = 'users.CustomUser'
 
@@ -25,7 +30,7 @@ INSTALLED_APPS = [
     'api',
     'recipes',
     'users',
-    'foodgram'
+    'foodgram',
 ]
 
 MIDDLEWARE = [
@@ -118,4 +123,3 @@ DJOSER = {
     },
     'HIDE_USERS': False,
 }
-
