@@ -4,16 +4,11 @@ from pathlib import Path
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 
-SECRET_KEY = 'hhz7l-ltdismtf@bzyz+rple7*s*w$jak%whj@(@u0eok^f9k4'
+SECRET_KEY = os.getenv('SECRET_KEY', 'foodgram_secret')
 
 DEBUG = os.getenv('DEBUG', 'False') == 'True'
 
-ALLOWED_HOSTS = [
-    '158.160.5.188',
-    '127.0.0.1',
-    'localhost',
-    'f00dgram.serveblog.net',
-]
+ALLOWED_HOSTS = os.getenv('ALLOWED_HOSTS', '*').split()
 
 AUTH_USER_MODEL = 'users.CustomUser'
 
@@ -100,7 +95,7 @@ USE_L10N = True
 USE_TZ = True
 
 STATIC_URL = '/static/'
-STATIC_ROOT = '/app/static/'
+STATIC_ROOT = BASE_DIR / 'static'
 
 MEDIA_URL = '/media/'
 MEDIA_ROOT = os.path.join(BASE_DIR, 'media')

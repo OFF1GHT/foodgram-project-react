@@ -109,7 +109,8 @@ docker compose run web python manage.py migrate
 
 3. Соберите статику:
 ```
-docker compose run web python manage.py collectstatic
+docker compose exec backend python manage.py collectstatic
+docker compose exec backend cp -r /app/static/. /app/collected_static/
 ```
 
 4. Переименуйте файл '.env.example' на 'env' и подставте свои данные.
