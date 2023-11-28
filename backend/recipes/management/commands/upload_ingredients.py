@@ -7,18 +7,13 @@ from recipes.models import Ingredient  # isort:skip
 
 class Command(BaseCommand):
     """
-    Добавляем ингредиенты из файла CSV.
-    После миграции БД запускаем командой
-    python manage.py upload_ingredients локально
-    или
+    Добавить ингредиенты в БД:
+    python manage.py upload_ingredients (локально)
     sudo docker-compose exec backend python manage.py upload_ingredients
     или
     sudo docker compose -f docker-compose.production.yml
-    exec backend python manage.py upload_ingredients
-    на удаленном сервере.
-    Создает записи в модели Ingredients из списка.
+    exec backend python manage.py upload_ingredients (для удаленного сервера)
     """
-    help = 'Load ingredients data from csv-file to DB.'
 
     def handle(self, *args, **kwargs):
         with open(
