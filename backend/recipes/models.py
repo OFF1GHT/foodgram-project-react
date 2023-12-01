@@ -1,13 +1,32 @@
 from django.db import models
 from users.models import CustomUser
+from django.core.validators import RegexValidator, MinValueValidator
+from api.constants import (
+    MAX_NAME_LENGTH,
+    MAX_COLOR_LENGTH,
+    MAX_SLUG_LENGTH,
+    MAX_MEASUREMENT_UNIT_LENGTH,
+)
 
 
 class Tag(models.Model):
     """Модель тег"""
 
-    name = models.CharField(max_length=200)
-    color = models.CharField(max_length=7, verbose_name='Цвет')
-    slug = models.SlugField(max_length=200, unique=True)
+    name = models.CharField(max_length=MAX_NAME_LENGTH)
+    color = models.CharField(
+        max_length=MAX_COLOR_LENGTH,
+        validators=[
+            RegexValidator(
+                regex='^#[0-9a-fA-F]{6}$', message='Введите корректный цвет'
+            )
+        ],
+        verbose_name='Цвет',
+    )
+    slug = models.SlugField(max_length=MAX_SLUG_LENGTH, unique=True)
+
+    class Meta:
+        verbose_name = 'Тег'
+        verbose_name_plural = 'Теги'
 
     def __str__(self):
         return self.name
@@ -16,10 +35,16 @@ class Tag(models.Model):
 class Ingredient(models.Model):
     """Модель ингридиент"""
 
-    name = models.CharField(max_length=200, unique=False, blank=False)
-    measurement_unit = models.CharField(
-        max_length=200, blank=False, unique=False
+    name = models.CharField(
+        max_length=MAX_NAME_LENGTH, unique=False, blank=False
     )
+    measurement_unit = models.CharField(
+        max_length=MAX_MEASUREMENT_UNIT_LENGTH, blank=False, unique=False
+    )
+
+    class Meta:
+        verbose_name = 'Ингредиент'
+        verbose_name_plural = 'Ингредиенты'
 
     def __str__(self):
         return self.name
@@ -28,7 +53,7 @@ class Ingredient(models.Model):
 class Recipe(models.Model):
     """Модель рецепт"""
 
-    name = models.CharField(max_length=200, blank=False)
+    name = models.CharField(max_length=MAX_NAME_LENGTH, blank=False)
     image = models.ImageField(upload_to='recipes/', null=True, blank=True)
     author = models.ForeignKey(
         CustomUser,
@@ -49,7 +74,10 @@ class Recipe(models.Model):
         related_name='recipes',
         blank=False,
     )
-    cooking_time = models.PositiveSmallIntegerField(blank=False)
+    cooking_time = models.PositiveSmallIntegerField(
+        blank=False,
+        validators=[MinValueValidator(1)],
+    )
     pub_date = models.DateTimeField(
         'Дата публикации',
         auto_now_add=True,
@@ -117,7 +145,10 @@ class RecipeIngredient(models.Model):
         on_delete=models.CASCADE,
         related_name='ingredient_recipes',
     )
-    amount = models.PositiveBigIntegerField(blank=False)
+    amount = models.PositiveIntegerField(
+        blank=False,
+        validators=[MinValueValidator(1)],
+    )
 
     class Meta:
         verbose_name = ('Ингредиент в рецепте',)

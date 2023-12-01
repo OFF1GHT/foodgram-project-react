@@ -17,11 +17,11 @@ class Command(BaseCommand):
 
     def handle(self, *args, **kwargs):
         with open(
-                'recipes/data/ingredients.csv', 'r',
-                encoding='UTF-8'
+            'recipes/data/ingredients.csv', 'r', encoding='UTF-8'
         ) as ingredients:
             for row in reader(ingredients):
                 if len(row) == 2:
                     Ingredient.objects.get_or_create(
-                        name=row[0], measurement_unit=row[1],
+                        name=row[0],
+                        measurement_unit=row[1],
                     )

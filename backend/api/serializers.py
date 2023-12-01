@@ -1,4 +1,3 @@
-from django.shortcuts import get_object_or_404
 from django.core.exceptions import ValidationError
 from django.db.models import F
 from rest_framework import serializers
@@ -16,6 +15,7 @@ from recipes.models import (
 )
 
 from users.models import CustomUser, Subscribe
+from .constants import MIN_INGREDIENT_AMOUNT
 
 
 class CustomUserSerializer(UserSerializer):
@@ -37,11 +37,13 @@ class CustomUserSerializer(UserSerializer):
     def get_is_subscribed(self, obj):
         """Проверяет, подписан ли пользователь на автора."""
         request = self.context.get('request')
-        if request.user.is_authenticated:
-            return Subscribe.objects.filter(
+        return (
+            request
+            and request.user.is_authenticated
+            and Subscribe.objects.filter(
                 user=request.user, author=obj
             ).exists()
-        return False
+        )
 
 
 class TagSerializer(serializers.ModelSerializer):
@@ -104,15 +106,6 @@ class RecipeIngredientGetSerializer(serializers.ModelSerializer):
         model = RecipeIngredient
         fields = ('id', 'name', 'measurement_unit', 'amount')
 
-    def validate_amount(self, value):
-        """Проверяем, что количество ингредиента больше 0."""
-
-        if value <= 0:
-            raise ValidationError(
-                'Количество ингредиента должно быть больше 0'
-            )
-        return value
-
 
 class RecipeReadSerializer(serializers.ModelSerializer):
     """Сериализатор для получения списка рецептов"""
@@ -173,7 +166,7 @@ class AddIngredientRecipeSerializer(serializers.ModelSerializer):
     def validate_amount(self, value):
         """Проверяем, что количество ингредиента больше 0."""
 
-        if value <= 0:
+        if value <= MIN_INGREDIENT_AMOUNT:
             raise ValidationError(
                 'Количество ингредиента должно быть больше 0'
             )
@@ -208,20 +201,26 @@ class RecipeCreateSerializer(serializers.ModelSerializer):
         return data
 
     def add_ingredients(self, recipe, ingredients_data):
-        ingredients = []
-        for ingredient_data in ingredients_data:
-            ingredient_id = ingredient_data['ingredient']['id']
-            amount = ingredient_data['amount']
-            ingredient = Ingredient.objects.get(id=ingredient_id)
-            if RecipeIngredient.objects.filter(
-                recipe=recipe, ingredient=ingredient_id
-            ).exists():
-                amount += F('amount')
-            recipe_ingredient = RecipeIngredient(
-                recipe=recipe, ingredient=ingredient, amount=amount
+        ingredients = [
+            RecipeIngredient(
+                recipe=recipe,
+                ingredient=Ingredient.objects.get(
+                    id=ingredient_data['ingredient']['id']
+                ),
+                amount=ingredient_data['amount'],
             )
-            ingredients.append(recipe_ingredient)
-        RecipeIngredient.objects.bulk_create(ingredients)
+            for ingredient_data in ingredients_data
+        ]
+
+        for recipe_ingredient in ingredients:
+            if RecipeIngredient.objects.filter(
+                recipe=recipe, ingredient=recipe_ingredient.ingredient
+            ).exists():
+                RecipeIngredient.objects.filter(
+                    recipe=recipe, ingredient=recipe_ingredient.ingredient
+                ).update(amount=F('amount') + recipe_ingredient.amount)
+            else:
+                recipe_ingredient.save()
 
     def create(self, validated_data):
         ingredients_data = validated_data.pop('ingredients')
@@ -244,8 +243,8 @@ class ShoppingCartSerializer(serializers.Serializer):
     """Сериализатор для добавления и удаления рецептов из корзины покупок."""
 
     def validate(self, data):
-        recipe_id = self.context['recipe_id']
-        user = self.context['request'].user
+        recipe_id = data.get('recipe_id')
+        user = data.get('user')
 
         if ShoppingCart.objects.filter(
             user=user, recipe_id=recipe_id
@@ -254,22 +253,11 @@ class ShoppingCartSerializer(serializers.Serializer):
 
         return data
 
-    def create(self, validated_data):
-        recipe_id = self.context['recipe_id']
-        user = self.context['request'].user
-        recipe = get_object_or_404(Recipe, pk=recipe_id)
-
-        shopping_list_item = ShoppingCart.objects.create(
-            user=user, recipe=recipe
-        )
-
-        return shopping_list_item
-
 
 class SubscriptionSerializer(serializers.ModelSerializer):
     is_subscribed = serializers.SerializerMethodField()
-    recipes = serializers.SerializerMethodField()
-    recipes_count = serializers.SerializerMethodField()
+    recipes = ShortRecipeSerializer(many=True, read_only=True)
+    recipes_count = serializers.IntegerField(read_only=True)
 
     class Meta:
         model = CustomUser
@@ -291,21 +279,3 @@ class SubscriptionSerializer(serializers.ModelSerializer):
                 user=request.user, author=obj
             ).exists()
         return False
-
-    def get_recipes(self, obj):
-        request = self.context.get('request')
-        limit_recipes = request.query_params.get('recipes_limit')
-        recipes_queryset = obj.recipes.all()
-        if limit_recipes is not None:
-            try:
-                limit = int(limit_recipes)
-                recipes_queryset = recipes_queryset[:limit]
-            except ValueError:
-                pass
-        serializer = ShortRecipeSerializer(
-            recipes_queryset, many=True, context={'request': request}
-        )
-        return serializer.data
-
-    def get_recipes_count(self, obj):
-        return Recipe.objects.filter(author=obj).count()

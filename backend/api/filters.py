@@ -1,4 +1,5 @@
 from django_filters import rest_framework as filters
+
 from recipes.models import Ingredient, Recipe
 from users.models import CustomUser
 
@@ -50,7 +51,7 @@ class RecipeFilter(filters.FilterSet):
     def get_favorite(self, queryset, name, value):
         if value:
             return queryset.filter(favorites__user=self.request.user)
-        return queryset.exclude(favorites__user=self.request.user)
+        return queryset
 
     def get_is_in_shopping_cart(self, queryset, name, value):
         if value:
