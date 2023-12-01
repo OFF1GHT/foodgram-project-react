@@ -2,6 +2,8 @@
 
 Добро пожаловать в Foodgram! Это ваш уникальный ресурс для создания, поиска и обмена рецептами. 
 
+[![Main Foodgram workflow](https://github.com/OFF1GHT/foodgram-project-react/actions/workflows/main.yml/badge.svg)](https://github.com/OFF1GHT/foodgram-project-react/actions/workflows/main.yml)
+
 ## 1. О проекте 
 Foodgram - это платформа для любителей готовить и делиться своими кулинарными шедеврами. Здесь вы можете создавать, искать и сохранять рецепты, а также делиться ими с другими пользователями.
 
