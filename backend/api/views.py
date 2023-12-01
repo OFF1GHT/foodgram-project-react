@@ -21,7 +21,6 @@ from .utils import create_shopping_list_report
 from .paginators import LimitPageNumberPaginator
 
 
-
 User = get_user_model()
 
 
