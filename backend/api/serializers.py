@@ -1,20 +1,13 @@
+from api.fields import Base64ImageField
 from django.core.exceptions import ValidationError
 from django.db.models import F
+from djoser.serializers import UserSerializer
+from recipes.models import (Favorite, Ingredient, Recipe, RecipeIngredient,
+                            ShoppingCart, Tag)
 from rest_framework import serializers
 from rest_framework.fields import SerializerMethodField
-from djoser.serializers import UserSerializer
-from api.fields import Base64ImageField
-
-from recipes.models import (
-    Tag,
-    Ingredient,
-    Recipe,
-    Favorite,
-    ShoppingCart,
-    RecipeIngredient,
-)
-
 from users.models import CustomUser, Subscribe
+
 from .constants import MIN_INGREDIENT_AMOUNT
 
 

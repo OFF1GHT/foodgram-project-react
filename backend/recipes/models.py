@@ -1,13 +1,8 @@
+from api.constants import (MAX_COLOR_LENGTH, MAX_MEASUREMENT_UNIT_LENGTH,
+                           MAX_NAME_LENGTH, MAX_SLUG_LENGTH)
+from django.core.validators import MinValueValidator, RegexValidator
 from django.db import models
-from django.core.validators import RegexValidator, MinValueValidator
-
 from users.models import CustomUser
-from api.constants import (
-    MAX_NAME_LENGTH,
-    MAX_COLOR_LENGTH,
-    MAX_SLUG_LENGTH,
-    MAX_MEASUREMENT_UNIT_LENGTH,
-)
 
 
 class Tag(models.Model):
