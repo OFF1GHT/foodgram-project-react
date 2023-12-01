@@ -1,6 +1,6 @@
 # Проект Foodgram
 
-Добро пожаловать в Foodgram! Это ваш уникальный ресурс для создания, поиска и обмена рецептами. 
+Добро пожаловать в [Foodgram](https://f00dgram.serveblog.net/)! Это ваш уникальный ресурс для создания, поиска и обмена рецептами. 
 
 [![Main Foodgram workflow](https://github.com/OFF1GHT/foodgram-project-react/actions/workflows/main.yml/badge.svg)](https://github.com/OFF1GHT/foodgram-project-react/actions/workflows/main.yml)
 
