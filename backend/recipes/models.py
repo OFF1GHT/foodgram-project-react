@@ -1,24 +1,42 @@
-from api.constants import (MAX_COLOR_LENGTH, MAX_MEASUREMENT_UNIT_LENGTH,
-                           MAX_NAME_LENGTH, MAX_SLUG_LENGTH)
-from django.core.validators import MinValueValidator, RegexValidator
-from django.db import models
+from .constants import (
+    MAX_COLOR_LENGTH,
+    MAX_MEASUREMENT_UNIT_LENGTH,
+    MAX_NAME_LENGTH,
+    MAX_SLUG_LENGTH,
+    HEX_COLOR_REGEX,
+    MIN_COOKING_TIME,
+    MAX_COOKING_TIME,
+    MIN_QUANTITY,
+)
+
 from users.models import CustomUser
+
+from django.core.validators import (
+    MinValueValidator,
+    RegexValidator,
+    MaxValueValidator,
+)
+from django.db import models
 
 
 class Tag(models.Model):
     """Модель тег"""
 
-    name = models.CharField(max_length=MAX_NAME_LENGTH)
+    name = models.CharField(
+        max_length=MAX_NAME_LENGTH, verbose_name='Название'
+    )
     color = models.CharField(
         max_length=MAX_COLOR_LENGTH,
         validators=[
             RegexValidator(
-                regex='^#[0-9a-fA-F]{6}$', message='Введите корректный цвет'
+                regex=HEX_COLOR_REGEX, message='Введите корректный цвет'
             )
         ],
         verbose_name='Цвет',
     )
-    slug = models.SlugField(max_length=MAX_SLUG_LENGTH, unique=True)
+    slug = models.SlugField(
+        max_length=MAX_SLUG_LENGTH, unique=True, verbose_name='Slug'
+    )
 
     class Meta:
         verbose_name = 'Тег'
@@ -32,13 +50,20 @@ class Ingredient(models.Model):
     """Модель ингридиент"""
 
     name = models.CharField(
-        max_length=MAX_NAME_LENGTH, unique=False, blank=False
+        max_length=MAX_NAME_LENGTH,
+        unique=False,
+        blank=False,
+        verbose_name='Название',
     )
     measurement_unit = models.CharField(
-        max_length=MAX_MEASUREMENT_UNIT_LENGTH, blank=False, unique=False
+        max_length=MAX_MEASUREMENT_UNIT_LENGTH,
+        blank=False,
+        unique=False,
+        verbose_name='Единица измерения',
     )
 
     class Meta:
+        unique_together = ('name', 'measurement_unit')
         verbose_name = 'Ингредиент'
         verbose_name_plural = 'Ингредиенты'
 
@@ -49,34 +74,45 @@ class Ingredient(models.Model):
 class Recipe(models.Model):
     """Модель рецепт"""
 
-    name = models.CharField(max_length=MAX_NAME_LENGTH, blank=False)
-    image = models.ImageField(upload_to='recipes/', null=True, blank=True)
+    name = models.CharField(
+        max_length=MAX_NAME_LENGTH, blank=False, verbose_name='Название'
+    )
+    image = models.ImageField(
+        upload_to='recipes/', null=True, blank=True, verbose_name='Изображение'
+    )
     author = models.ForeignKey(
         CustomUser,
         on_delete=models.CASCADE,
         related_name='recipes',
-        blank=False,
+        verbose_name='Автор',
     )
     text = models.TextField(
         blank=False,
+        verbose_name='Описание',
     )
     ingredients = models.ManyToManyField(
         Ingredient,
         blank=False,
         related_name='recipes',
+        verbose_name='Ингредиенты',
     )
     tags = models.ManyToManyField(
         Tag,
         related_name='recipes',
         blank=False,
+        verbose_name='Теги',
     )
     cooking_time = models.PositiveSmallIntegerField(
         blank=False,
-        validators=[MinValueValidator(1)],
+        validators=[
+            MinValueValidator(MIN_COOKING_TIME),
+            MaxValueValidator(MAX_COOKING_TIME),
+        ],
+        verbose_name='Время приготовления',
     )
     pub_date = models.DateTimeField(
-        'Дата публикации',
         auto_now_add=True,
+        verbose_name='Дата публикации',
     )
 
     class Meta:
@@ -89,18 +125,25 @@ class Recipe(models.Model):
 
 
 class Favorite(models.Model):
-    """Модель избранне"""
+    """Модель избранное"""
 
     user = models.ForeignKey(
         CustomUser,
         on_delete=models.CASCADE,
         related_name='favorites',
+        verbose_name='Пользователь',
     )
     recipe = models.ForeignKey(
         Recipe,
         on_delete=models.CASCADE,
         related_name='favorites',
+        verbose_name='Рецепт',
     )
+
+    class Meta:
+        unique_together = ('user', 'recipe')
+        verbose_name = 'Избранное'
+        verbose_name_plural = 'Избранные'
 
 
 class ShoppingCart(models.Model):
@@ -110,12 +153,14 @@ class ShoppingCart(models.Model):
         CustomUser,
         on_delete=models.CASCADE,
         related_name='shopping_list',
+        verbose_name='Пользователь',
     )
     recipe = models.ForeignKey(
         Recipe,
         on_delete=models.CASCADE,
         related_name='shopping_list',
         null=True,
+        verbose_name='Рецепт',
     )
 
     class Meta:
@@ -135,15 +180,18 @@ class RecipeIngredient(models.Model):
         Recipe,
         on_delete=models.CASCADE,
         related_name='recipe_ingredients',
+        verbose_name='Рецепт',
     )
     ingredient = models.ForeignKey(
         Ingredient,
         on_delete=models.CASCADE,
         related_name='ingredient_recipes',
+        verbose_name='Ингредиент',
     )
     amount = models.PositiveIntegerField(
         blank=False,
-        validators=[MinValueValidator(1)],
+        validators=[MinValueValidator(MIN_QUANTITY)],
+        verbose_name='Количество',
     )
 
     class Meta:

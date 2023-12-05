@@ -1,7 +1,13 @@
 from django.contrib import admin
 
-from .models import (Favorite, Ingredient, Recipe, RecipeIngredient,
-                     ShoppingCart, Tag)
+from .models import (
+    Favorite,
+    Ingredient,
+    Recipe,
+    RecipeIngredient,
+    ShoppingCart,
+    Tag,
+)
 
 
 class TagAdmin(admin.ModelAdmin):
@@ -14,9 +20,16 @@ class IngredientAdmin(admin.ModelAdmin):
     search_fields = ('name',)
 
 
+class RecipeIngredientInline(admin.TabularInline):
+    model = RecipeIngredient
+    autocomplete_fields = ('ingredient',)
+    extra = 1
+
+
 class RecipeAdmin(admin.ModelAdmin):
     list_display = ('name', 'author', 'cooking_time', 'pub_date')
     filter_horizontal = ('ingredients', 'tags')
+    inlines = [RecipeIngredientInline]
 
 
 class FavoriteAdmin(admin.ModelAdmin):
@@ -29,11 +42,6 @@ class ShoppingCartAdmin(admin.ModelAdmin):
     search_fields = ('user__username', 'recipe__name')
 
 
-class RecipeIngredientInline(admin.TabularInline):
-    model = RecipeIngredient
-    extra = 1
-
-
 class RecipeIngredientAdmin(admin.ModelAdmin):
     list_display = ('recipe', 'ingredient', 'amount')
     search_fields = ('recipe__name', 'ingredient__name')
@@ -42,6 +50,6 @@ class RecipeIngredientAdmin(admin.ModelAdmin):
 admin.site.register(Tag, TagAdmin)
 admin.site.register(Ingredient, IngredientAdmin)
 admin.site.register(Recipe, RecipeAdmin)
-admin.site.register(Favorite), FavoriteAdmin
+admin.site.register(Favorite, FavoriteAdmin)
 admin.site.register(ShoppingCart, ShoppingCartAdmin)
 admin.site.register(RecipeIngredient, RecipeIngredientAdmin)
