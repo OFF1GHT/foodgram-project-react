@@ -1,7 +1,6 @@
 from django.core.validators import (MaxValueValidator, MinValueValidator,
                                     RegexValidator)
 from django.db import models
-
 from users.models import CustomUser
 
 from .constants import (HEX_COLOR_REGEX, MAX_COLOR_LENGTH, MAX_COOKING_TIME,
