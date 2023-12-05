@@ -1,30 +1,23 @@
 from django.contrib.auth import get_user_model
 from django.http import HttpResponse
 from django.shortcuts import get_object_or_404
+from django_filters.rest_framework import DjangoFilterBackend
+from djoser.views import UserViewSet
 from rest_framework import status, viewsets
 from rest_framework.decorators import action
 from rest_framework.permissions import SAFE_METHODS, AllowAny, IsAuthenticated
 from rest_framework.response import Response
 
-from django_filters.rest_framework import DjangoFilterBackend
-from djoser.views import UserViewSet
 from recipes.models import Ingredient, Recipe, ShoppingCart, Tag
 from users.models import CustomUser, Subscribe
 
 from .filters import IngredientFilter, RecipeFilter
 from .paginators import LimitPageNumberPaginator
-from .serializers import (
-    CustomUserSerializer,
-    FavoriteSerializer,
-    IngredientSerializer,
-    RecipeCreateSerializer,
-    RecipeReadSerializer,
-    ShoppingCartSerializer,
-    SubscriptionSerializer,
-    TagSerializer,
-)
+from .serializers import (CustomUserSerializer, FavoriteSerializer,
+                          IngredientSerializer, RecipeCreateSerializer,
+                          RecipeReadSerializer, ShoppingCartSerializer,
+                          SubscriptionSerializer, TagSerializer)
 from .utils import create_shopping_list_report
-
 
 User = get_user_model()
 

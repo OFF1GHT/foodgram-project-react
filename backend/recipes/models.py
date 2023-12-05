@@ -1,22 +1,12 @@
-from .constants import (
-    MAX_COLOR_LENGTH,
-    MAX_MEASUREMENT_UNIT_LENGTH,
-    MAX_NAME_LENGTH,
-    MAX_SLUG_LENGTH,
-    HEX_COLOR_REGEX,
-    MIN_COOKING_TIME,
-    MAX_COOKING_TIME,
-    MIN_QUANTITY,
-)
+from django.core.validators import (MaxValueValidator, MinValueValidator,
+                                    RegexValidator)
+from django.db import models
 
 from users.models import CustomUser
 
-from django.core.validators import (
-    MinValueValidator,
-    RegexValidator,
-    MaxValueValidator,
-)
-from django.db import models
+from .constants import (HEX_COLOR_REGEX, MAX_COLOR_LENGTH, MAX_COOKING_TIME,
+                        MAX_MEASUREMENT_UNIT_LENGTH, MAX_NAME_LENGTH,
+                        MAX_SLUG_LENGTH, MIN_COOKING_TIME, MIN_QUANTITY)
 
 
 class Tag(models.Model):

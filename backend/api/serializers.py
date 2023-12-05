@@ -1,9 +1,8 @@
 from django.core.exceptions import ValidationError
 from django.db import IntegrityError
-
+from djoser.serializers import UserSerializer
 from rest_framework import serializers
 from rest_framework.fields import SerializerMethodField
-from djoser.serializers import UserSerializer
 
 from api.fields import Base64ImageField
 from recipes.models import Favorite, Ingredient, Recipe, RecipeIngredient, Tag
