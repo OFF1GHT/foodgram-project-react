@@ -3,6 +3,7 @@ from django.http import HttpResponse
 from django.shortcuts import get_object_or_404
 from django_filters.rest_framework import DjangoFilterBackend
 from djoser.views import UserViewSet
+
 from recipes.models import Ingredient, Recipe, ShoppingCart, Tag
 from rest_framework import status, viewsets
 from rest_framework.decorators import action
@@ -12,10 +13,10 @@ from users.models import CustomUser, Subscribe
 
 from .filters import IngredientFilter, RecipeFilter
 from .paginators import LimitPageNumberPaginator
-from .serializers import (CustomUserSerializer, FavoriteSerializer,
-                          IngredientSerializer, RecipeCreateSerializer,
-                          RecipeReadSerializer, ShoppingCartSerializer,
-                          SubscriptionSerializer, TagSerializer)
+from .serializers import (FavoriteSerializer, IngredientSerializer,
+                          RecipeCreateSerializer, RecipeReadSerializer,
+                          ShoppingCartSerializer, SubscriptionSerializer,
+                          TagSerializer)
 from .utils import create_shopping_list_report
 
 User = get_user_model()
@@ -133,19 +134,18 @@ class CustomUserViewSet(UserViewSet):
         author = self.get_object()
 
         if request.method == 'POST':
-            serializer = CustomUserSerializer(
+            serializer = SubscriptionSerializer(
                 author, context={'request': request}
             )
             Subscribe.objects.create(user=request.user, author=author)
             return Response(serializer.data, status=status.HTTP_201_CREATED)
 
-        if request.method == 'DELETE':
-            subscription = Subscribe.objects.filter(
-                user=request.user, author=author
-            )
-            if subscription.exists():
-                subscription.delete()
-                return Response(status=status.HTTP_204_NO_CONTENT)
+        subscription = Subscribe.objects.filter(
+            user=request.user, author=author
+        )
+        if subscription.exists():
+            subscription.delete()
+            return Response(status=status.HTTP_204_NO_CONTENT)
 
         return Response(status=status.HTTP_405_METHOD_NOT_ALLOWED)
 
@@ -160,8 +160,8 @@ class CustomUserViewSet(UserViewSet):
         """Просмотр подписок пользователя."""
         subscriptions = Subscribe.objects.filter(
             user=request.user
-        ).select_related('author')
-        users = [subscription.author for subscription in subscriptions]
+        ).values_list('author', flat=True)
+        users = User.objects.filter(id__in=subscriptions)
         paginated_users = self.paginate_queryset(users)
         serializer = self.serializer_class(
             paginated_users, many=True, context={'request': request}

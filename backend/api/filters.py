@@ -1,6 +1,6 @@
 from django_filters import rest_framework as filters
+
 from recipes.models import Ingredient, Recipe
-from users.models import CustomUser
 
 
 class IngredientFilter(filters.FilterSet):
@@ -18,12 +18,6 @@ class IngredientFilter(filters.FilterSet):
 
 class RecipeFilter(filters.FilterSet):
     """Фильтрация по избранному, автору, списку покупок и тегам."""
-
-    author = filters.ModelChoiceFilter(
-        field_name='author',
-        label='Автор',
-        queryset=CustomUser.objects.all(),
-    )
 
     is_favorited = filters.BooleanFilter(
         method='get_favorite',

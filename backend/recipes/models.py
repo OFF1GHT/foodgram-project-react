@@ -1,6 +1,7 @@
 from django.core.validators import (MaxValueValidator, MinValueValidator,
                                     RegexValidator)
 from django.db import models
+
 from users.models import CustomUser
 
 from .constants import (HEX_COLOR_REGEX, MAX_COLOR_LENGTH, MAX_COOKING_TIME,
@@ -52,7 +53,9 @@ class Ingredient(models.Model):
     )
 
     class Meta:
-        unique_together = ('name', 'measurement_unit')
+        constraints = [
+            models.UniqueConstraint(fields=['name', 'measurement_unit'], name='unique_name_measurement_unit')
+        ]
         verbose_name = 'Ингредиент'
         verbose_name_plural = 'Ингредиенты'
 
