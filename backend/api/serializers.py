@@ -230,7 +230,9 @@ class RecipeCreateSerializer(serializers.ModelSerializer):
 
     def validate_ingredients(self, value):
         if not value:
-            raise serializers.ValidationError('Добавьте хотя бы один ингредиент.')
+            raise serializers.ValidationError(
+                'Добавьте хотя бы один ингредиент.'
+            )
 
         ingredient_ids = [ingredient['id'].id for ingredient in value]
         if len(ingredient_ids) != len(set(ingredient_ids)):
@@ -289,7 +291,9 @@ class SubscriptionSerializer(CustomUserSerializer):
 
     is_subscribed = serializers.SerializerMethodField()
     recipes = serializers.SerializerMethodField(read_only=True)
-    recipes_count = serializers.IntegerField(read_only=True, source='recipes.count')
+    recipes_count = serializers.IntegerField(
+        read_only=True, source='recipes.count'
+    )
 
     class Meta:
         model = CustomUser
