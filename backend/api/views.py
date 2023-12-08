@@ -103,7 +103,7 @@ class RecipeViewSet(viewsets.ModelViewSet):
         buy_list_text = create_shopping_list_report(
             ShoppingCart.objects.filter(
                 user=request.user
-                ).values_list('recipe__name', flat=True)
+            ).values_list('recipe__name', flat=True)
         )
         response = HttpResponse(buy_list_text, content_type="text/plain")
         response['Content-Disposition'] = (

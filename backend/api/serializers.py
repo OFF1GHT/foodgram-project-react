@@ -303,8 +303,8 @@ class SubscriptionSerializer(CustomUserSerializer):
     def get_recipes(self, obj):
         limit = self.context.get('limit', None)
         recipes = (
-            obj.recipes.all()[:limit] 
-            if limit is not None 
+            obj.recipes.all()[:limit]
+            if limit is not None
             else obj.recipes.all()
         )
         return ShortRecipeSerializer(recipes, many=True).data
