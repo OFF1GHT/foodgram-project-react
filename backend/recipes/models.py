@@ -3,7 +3,6 @@ from django.core.validators import (MaxValueValidator, MinValueValidator,
 from django.db import models
 
 from users.models import CustomUser
-
 from .constants import (HEX_COLOR_REGEX, MAX_COLOR_LENGTH, MAX_COOKING_TIME,
                         MAX_MEASUREMENT_UNIT_LENGTH, MAX_NAME_LENGTH,
                         MAX_SLUG_LENGTH, MIN_COOKING_TIME, MIN_QUANTITY)
@@ -134,7 +133,9 @@ class Favorite(models.Model):
     )
 
     class Meta:
-        unique_together = ('user', 'recipe')
+        constraints = [
+            models.UniqueConstraint(fields=['user', 'recipe'], name='unique_user_recipe')
+        ]
         verbose_name = 'Избранное'
         verbose_name_plural = 'Избранные'
 
