@@ -13,7 +13,7 @@ from recipes.models import Ingredient, Recipe, ShoppingCart, Tag, Favorite
 from users.models import CustomUser, Subscribe
 from .filters import IngredientFilter, RecipeFilter
 from .paginators import LimitPageNumberPaginator
-from .serializers import (ShortRecipeSerializer, IngredientSerializer,
+from .serializers import (FavoriteSerializer, IngredientSerializer,
                           RecipeCreateSerializer, RecipeReadSerializer,
                           ShoppingCartSerializer, SubscriptionSerializer,
                           TagSerializer)
@@ -56,14 +56,9 @@ class RecipeViewSet(viewsets.ModelViewSet):
         recipe = get_object_or_404(Recipe, id=pk)
         favorite = request.user.favorites.filter(recipe=recipe)
         if request.method == 'POST':
-            if favorite:
-                return Response(
-                    {'error': 'Рецепт уже в избранном'},
-                    status=status.HTTP_400_BAD_REQUEST,
-                )
             favorite = Favorite(user=request.user, recipe=recipe)
             favorite.save()
-            serializer = ShortRecipeSerializer(recipe)
+            serializer = FavoriteSerializer(recipe)
             return Response(serializer.data, status=status.HTTP_201_CREATED)
         if not favorite:
             return Response(
