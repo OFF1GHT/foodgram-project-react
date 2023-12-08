@@ -43,7 +43,9 @@ class Subscribe(models.Model):
         verbose_name = 'Подписка'
         verbose_name_plural = 'Подписки'
         constraints = [
-            models.UniqueConstraint(fields=['user', 'author'], name='unique_subscription')
+            models.UniqueConstraint(
+                fields=['user', 'author'], name='unique_subscription'
+            )
         ]
 
     def clean(self):

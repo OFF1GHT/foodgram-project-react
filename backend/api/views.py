@@ -86,7 +86,9 @@ class RecipeViewSet(viewsets.ModelViewSet):
             serializer.is_valid(raise_exception=True)
             serializer.save()
             return Response(serializer.data, status=status.HTTP_201_CREATED)
-        shopping_cart_item = get_object_or_404(ShoppingCart, user=request.user, recipe=recipe)
+        shopping_cart_item = get_object_or_404(
+            ShoppingCart, user=request.user, recipe=recipe
+        )
         serializer.delete(shopping_cart_item)
         return Response(status=status.HTTP_204_NO_CONTENT)
 
@@ -99,10 +101,14 @@ class RecipeViewSet(viewsets.ModelViewSet):
         """Скачивание списка покупок."""
 
         buy_list_text = create_shopping_list_report(
-            ShoppingCart.objects.filter(user=request.user).values_list('recipe__name', flat=True)
+            ShoppingCart.objects.filter(
+                user=request.user
+                ).values_list('recipe__name', flat=True)
         )
         response = HttpResponse(buy_list_text, content_type="text/plain")
-        response['Content-Disposition'] = 'attachment; filename=shopping-list.txt'
+        response['Content-Disposition'] = (
+            'attachment; filename=shopping-list.txt'
+        )
         return response
 
 
@@ -165,7 +171,9 @@ class CustomUserViewSet(UserViewSet):
         subscriptions = Subscribe.objects.filter(
             user=request.user
         ).values_list('author', flat=True)
-        paginated_users = self.paginate_queryset(User.objects.filter(id__in=subscriptions))
+        paginated_users = self.paginate_queryset(
+            User.objects.filter(id__in=subscriptions)
+        )
         serializer = self.serializer_class(
             paginated_users, many=True, context={'request': request}
         )

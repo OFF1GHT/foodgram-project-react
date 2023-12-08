@@ -262,7 +262,9 @@ class ShoppingCartSerializer(serializers.ModelSerializer):
         recipe = data.get('recipe')
         user = data.get('user')
         if ShoppingCart.objects.filter(user=user, recipe=recipe).exists():
-            raise serializers.ValidationError('Этот рецепт уже есть в списке покупок')
+            raise serializers.ValidationError(
+                'Этот рецепт уже есть в списке покупок'
+            )
         return data
 
     def create(self, validated_data):
@@ -300,5 +302,9 @@ class SubscriptionSerializer(CustomUserSerializer):
 
     def get_recipes(self, obj):
         limit = self.context.get('limit', None)
-        recipes = obj.recipes.all()[:limit] if limit is not None else obj.recipes.all()
+        recipes = (
+            obj.recipes.all()[:limit] 
+            if limit is not None 
+            else obj.recipes.all()
+        )
         return ShortRecipeSerializer(recipes, many=True).data
