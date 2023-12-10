@@ -108,7 +108,9 @@ class RecipeViewSet(viewsets.ModelViewSet):
         ).values_list('recipe__name', flat=True)
         buy_list_text = create_shopping_list_report(shopping_cart_items)
         response = HttpResponse(buy_list_text, content_type="text/plain")
-        response['Content-Disposition'] = ('attachment; filename=shopping-list.txt')
+        response['Content-Disposition'] = (
+            'attachment; filename=shopping-list.txt'
+        )
 
         return response
 
