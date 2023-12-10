@@ -1,8 +1,8 @@
 from django.core.exceptions import ValidationError
-
 from rest_framework import serializers
 from rest_framework.fields import SerializerMethodField
 from djoser.serializers import UserSerializer
+from django.shortcuts import get_object_or_404
 
 from api.fields import Base64ImageField
 from recipes.models import (
@@ -13,7 +13,7 @@ from recipes.models import (
     Tag,
     ShoppingCart
 )
-from users.models import CustomUser
+from users.models import CustomUser, Subscribe
 from recipes.constants import MIN_INGREDIENT_AMOUNT, COOKING_TIME
 
 
@@ -82,24 +82,23 @@ class ShortRecipeSerializer(serializers.ModelSerializer):
 class FavoriteSerializer(serializers.ModelSerializer):
     """Сериализатор для избранного"""
 
-    image = Base64ImageField()
-
     class Meta:
         model = Favorite
         fields = '__all__'
 
     def validate(self, data):
-        recipe_id = self.context['recipe_id']
-        user = self.context['request'].user
-        if Favorite.objects.filter(user=user, recipe_id=recipe_id).exists():
+        recipe_id = data.get('recipe_id')
+        user = data.get('user')
+        if user.favorites.filter(user=user, recipe_id=recipe_id).exists():
             raise serializers.ValidationError(
                 'Этот рецепт уже есть в избранном'
             )
         return data
 
     def to_representation(self, instance):
-        recipe_serializer = ShortRecipeSerializer(instance)
-        return recipe_serializer.data
+        if hasattr(instance, 'name'):
+            return ShortRecipeSerializer(instance).data
+        return {'id': instance.id}
 
 
 class RecipeIngredientGetSerializer(serializers.ModelSerializer):
@@ -236,7 +235,8 @@ class RecipeCreateSerializer(serializers.ModelSerializer):
     def create(self, validated_data):
         ingredients_data = validated_data.pop('ingredients')
         tags = validated_data.pop('tags')
-        author = self.context.get('request').user
+        request = self.context.get('request')
+        author = validated_data.get('author', request.user if request else None)
         recipe = Recipe.objects.create(author=author, **validated_data)
         self.add_ingredients(recipe, ingredients_data)
         recipe.tags.set(tags)
@@ -261,20 +261,11 @@ class ShoppingCartSerializer(serializers.ModelSerializer):
     def validate(self, data):
         recipe = data.get('recipe')
         user = data.get('user')
-        if ShoppingCart.objects.filter(user=user, recipe=recipe).exists():
+        if user.shopping_list.filter(recipe=recipe).exists():
             raise serializers.ValidationError(
                 'Этот рецепт уже есть в списке покупок'
             )
         return data
-
-    def create(self, validated_data):
-        user = self.context['request'].user
-        recipe = validated_data['recipe']
-        shopping_cart_item = ShoppingCart.objects.create(
-            user=user,
-            recipe=recipe
-        )
-        return shopping_cart_item
 
     def delete(self, instance):
         instance.delete()
@@ -302,9 +293,39 @@ class SubscriptionSerializer(CustomUserSerializer):
 
     def get_recipes(self, obj):
         limit = self.context.get('limit', None)
+        try:
+            limit = int(limit)
+        except (TypeError, ValueError):
+            limit = None
         recipes = (
             obj.recipes.all()[:limit]
             if limit is not None
             else obj.recipes.all()
         )
         return ShortRecipeSerializer(recipes, many=True).data
+
+
+class SubscribeSerializer(serializers.Serializer):
+    """Добавление и удаление подписок пользователя."""
+
+    def validate(self, data):
+        user = data.get('user')
+        author = get_object_or_404(CustomUser, pk=self.context['id'])
+        if user == author:
+            raise serializers.ValidationError(
+                'Вы не можете подписаться на себя'
+            )
+        if Subscribe.objects.filter(user=user, author=author).exists():
+            raise serializers.ValidationError(
+                'Вы уже подписаны на этого пользователя'
+            )
+        return data
+
+    def create(self, validated_data):
+        user = self.context.get('request').user
+        author = get_object_or_404(CustomUser, pk=validated_data['id'])
+        Subscribe.objects.create(user=user, author=author)
+        serializer = SubscriptionSerializer(
+            author, context={'request': self.context.get('request')}
+        )
+        return serializer.data

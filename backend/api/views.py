@@ -3,20 +3,19 @@ from django.http import HttpResponse
 from django.shortcuts import get_object_or_404
 from django_filters.rest_framework import DjangoFilterBackend
 from djoser.views import UserViewSet
-
 from rest_framework import status, viewsets
 from rest_framework.decorators import action
 from rest_framework.permissions import SAFE_METHODS, AllowAny, IsAuthenticated
 from rest_framework.response import Response
 
-from recipes.models import Ingredient, Recipe, ShoppingCart, Tag, Favorite
+from recipes.models import Ingredient, Recipe, ShoppingCart, Tag
 from users.models import CustomUser, Subscribe
 from .filters import IngredientFilter, RecipeFilter
 from .paginators import LimitPageNumberPaginator
 from .serializers import (FavoriteSerializer, IngredientSerializer,
                           RecipeCreateSerializer, RecipeReadSerializer,
                           ShoppingCartSerializer, SubscriptionSerializer,
-                          TagSerializer)
+                          TagSerializer, SubscribeSerializer)
 from .utils import create_shopping_list_report
 
 User = get_user_model()
@@ -54,12 +53,17 @@ class RecipeViewSet(viewsets.ModelViewSet):
     )
     def favorite(self, request, pk=None):
         recipe = get_object_or_404(Recipe, id=pk)
-        favorite = request.user.favorites.filter(recipe=recipe)
         if request.method == 'POST':
-            favorite = Favorite(user=request.user, recipe=recipe)
-            favorite.save()
-            serializer = FavoriteSerializer(recipe)
+            serializer = FavoriteSerializer(
+                data={
+                    'recipe': recipe.id,
+                    'user': request.user.id
+                }, context={'request': request}
+            )
+            serializer.is_valid(raise_exception=True)
+            serializer.save()
             return Response(serializer.data, status=status.HTTP_201_CREATED)
+        favorite = request.user.favorites.filter(recipe=recipe)
         if not favorite:
             return Response(
                 {'errors': 'Рецепт не добавлен в избранное'},
@@ -99,16 +103,13 @@ class RecipeViewSet(viewsets.ModelViewSet):
     )
     def download_shopping_cart(self, request):
         """Скачивание списка покупок."""
-
-        buy_list_text = create_shopping_list_report(
-            ShoppingCart.objects.filter(
-                user=request.user
-            ).values_list('recipe__name', flat=True)
-        )
+        shopping_cart_items = ShoppingCart.objects.filter(
+            user=request.user
+        ).values_list('recipe__name', flat=True)
+        buy_list_text = create_shopping_list_report(shopping_cart_items)
         response = HttpResponse(buy_list_text, content_type="text/plain")
-        response['Content-Disposition'] = (
-            'attachment; filename=shopping-list.txt'
-        )
+        response['Content-Disposition'] = ('attachment; filename=shopping-list.txt')
+
         return response
 
 
@@ -128,35 +129,35 @@ class CustomUserViewSet(UserViewSet):
         serializer = self.get_serializer(request.user)
         return Response(serializer.data, status=status.HTTP_200_OK)
 
-    @action(
-        detail=True,
-        methods=['post', 'delete'],
-        permission_classes=[IsAuthenticated],
-    )
+    @action(detail=True,
+            methods=('post', 'delete'),
+            serializer_class=SubscribeSerializer,
+            permission_classes=(IsAuthenticated,),
+            )
     def subscribe(self, request, id=None):
-        follower = request.user
-        author = get_object_or_404(CustomUser, id=id)
-        follow = Subscribe.objects.filter(author=author, user=follower)
-        if request.method == 'POST':
-            if follower == author or follow:
-                return Response(
-                    {'errors': 'Нельзя подписаться на самого себя'},
-                    status=status.HTTP_400_BAD_REQUEST,
-                )
-            follow = Subscribe(author=author, user=follower)
-            follow.save()
-            serializer = SubscriptionSerializer(
-                author, context={'request': request}
-            )
-            return Response(serializer.data, status=status.HTTP_201_CREATED)
-        if not follow:
-            return Response(
-                {'errors': 'Ошибка отписки'},
-                status=status.HTTP_400_BAD_REQUEST,
-            )
-        follow.delete()
+        """Добавление и удаление подписок пользователя."""
 
-        return Response(status=status.HTTP_204_NO_CONTENT)
+        if request.method == 'POST':
+            serializer = self.get_serializer(
+                data=request.data,
+                context={'request': request, 'id': id}
+            )
+            serializer.is_valid(raise_exception=True)
+            response_data = serializer.save(id=id)
+            return Response(
+                {'message': 'Подписка успешно создана',
+                 'data': response_data},
+                status=status.HTTP_201_CREATED
+            )
+        subscription = get_object_or_404(
+            Subscribe, user=self.request.user,
+            author=get_object_or_404(CustomUser, id=id)
+        )
+        subscription.delete()
+        return Response(
+            {'Успешная отписка'},
+            status=status.HTTP_204_NO_CONTENT
+        )
 
     @action(
         methods=('get',),
@@ -168,12 +169,14 @@ class CustomUserViewSet(UserViewSet):
     def subscriptions(self, request):
         """Просмотр подписок пользователя."""
 
-        subscriptions = Subscribe.objects.filter(
-            user=request.user
-        ).values_list('author', flat=True)
         paginated_users = self.paginate_queryset(
-            User.objects.filter(id__in=subscriptions)
+            User.objects.filter(
+                id__in=Subscribe.objects.filter(
+                    user=request.user
+                ).values_list('author', flat=True)
+            )
         )
+
         serializer = self.serializer_class(
             paginated_users, many=True, context={'request': request}
         )
