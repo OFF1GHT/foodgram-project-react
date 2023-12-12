@@ -96,9 +96,7 @@ class FavoriteSerializer(serializers.ModelSerializer):
         return data
 
     def to_representation(self, instance):
-        if hasattr(instance, 'name'):
-            return ShortRecipeSerializer(instance).data
-        return {'id': instance.id}
+        return ShortRecipeSerializer(instance).data
 
 
 class RecipeIngredientGetSerializer(serializers.ModelSerializer):
@@ -269,9 +267,6 @@ class ShoppingCartSerializer(serializers.ModelSerializer):
             )
         return data
 
-    def delete(self, instance):
-        instance.delete()
-
 
 class SubscriptionSerializer(CustomUserSerializer):
     """Список подписок"""
@@ -309,6 +304,9 @@ class SubscriptionSerializer(CustomUserSerializer):
 
 class SubscribeSerializer(serializers.Serializer):
     """Добавление и удаление подписок пользователя."""
+    class Meta:
+        model = Subscribe
+        fields = '__all__'
 
     def validate(self, data):
         user = data.get('user')
@@ -325,7 +323,8 @@ class SubscribeSerializer(serializers.Serializer):
 
     def create(self, validated_data):
         user = self.context.get('request').user
-        author = get_object_or_404(CustomUser, pk=validated_data['id'])
+        author_id = self.context.get('id')
+        author = get_object_or_404(CustomUser, pk=author_id)
         Subscribe.objects.create(user=user, author=author)
         serializer = SubscriptionSerializer(
             author, context={'request': self.context.get('request')}

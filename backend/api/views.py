@@ -15,7 +15,8 @@ from .paginators import LimitPageNumberPaginator
 from .serializers import (FavoriteSerializer, IngredientSerializer,
                           RecipeCreateSerializer, RecipeReadSerializer,
                           ShoppingCartSerializer, SubscriptionSerializer,
-                          TagSerializer, SubscribeSerializer)
+                          TagSerializer, SubscribeSerializer,
+                          ShortRecipeSerializer)
 from .utils import create_shopping_list_report
 
 User = get_user_model()
@@ -62,7 +63,8 @@ class RecipeViewSet(viewsets.ModelViewSet):
             )
             serializer.is_valid(raise_exception=True)
             serializer.save()
-            return Response(serializer.data, status=status.HTTP_201_CREATED)
+            return Response(ShortRecipeSerializer
+                            (recipe).data, status=status.HTTP_201_CREATED)
         favorite = request.user.favorites.filter(recipe=recipe)
         if not favorite:
             return Response(
@@ -89,11 +91,12 @@ class RecipeViewSet(viewsets.ModelViewSet):
         if request.method == 'POST':
             serializer.is_valid(raise_exception=True)
             serializer.save()
-            return Response(serializer.data, status=status.HTTP_201_CREATED)
+            return Response(ShortRecipeSerializer
+                            (recipe).data, status=status.HTTP_201_CREATED)
         shopping_cart_item = get_object_or_404(
             ShoppingCart, user=request.user, recipe=recipe
         )
-        serializer.delete(shopping_cart_item)
+        shopping_cart_item.delete()
         return Response(status=status.HTTP_204_NO_CONTENT)
 
     @action(
@@ -103,15 +106,11 @@ class RecipeViewSet(viewsets.ModelViewSet):
     )
     def download_shopping_cart(self, request):
         """Скачивание списка покупок."""
-        shopping_cart_items = ShoppingCart.objects.filter(
-            user=request.user
-        ).values_list('recipe__name', flat=True)
+        shopping_cart_items = ShoppingCart.objects.filter(user=request.user)
         buy_list_text = create_shopping_list_report(shopping_cart_items)
         response = HttpResponse(buy_list_text, content_type="text/plain")
         response['Content-Disposition'] = (
-            'attachment; filename=shopping-list.txt'
-        )
-
+            'attachment; filename=shopping-list.txt')
         return response
 
 
@@ -145,12 +144,8 @@ class CustomUserViewSet(UserViewSet):
                 context={'request': request, 'id': id}
             )
             serializer.is_valid(raise_exception=True)
-            response_data = serializer.save(id=id)
-            return Response(
-                {'message': 'Подписка успешно создана',
-                 'data': response_data},
-                status=status.HTTP_201_CREATED
-            )
+            serializer.save()
+            return Response(serializer.data, status=status.HTTP_201_CREATED)
         subscription = get_object_or_404(
             Subscribe, user=self.request.user,
             author=get_object_or_404(CustomUser, id=id)
@@ -172,13 +167,8 @@ class CustomUserViewSet(UserViewSet):
         """Просмотр подписок пользователя."""
 
         paginated_users = self.paginate_queryset(
-            User.objects.filter(
-                id__in=Subscribe.objects.filter(
-                    user=request.user
-                ).values_list('author', flat=True)
-            )
+            CustomUser.objects.filter(subscribing__user=request.user)
         )
-
         serializer = self.serializer_class(
             paginated_users, many=True, context={'request': request}
         )
