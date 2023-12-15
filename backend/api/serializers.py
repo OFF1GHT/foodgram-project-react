@@ -82,21 +82,42 @@ class ShortRecipeSerializer(serializers.ModelSerializer):
 class FavoriteSerializer(serializers.ModelSerializer):
     """Сериализатор для избранного"""
 
+    recipe = ShortRecipeSerializer(read_only=True)
+    user = serializers.PrimaryKeyRelatedField(
+        queryset=CustomUser.objects.all()
+    )
+
     class Meta:
         model = Favorite
         fields = '__all__'
 
-    def validate(self, data):
+    def to_internal_value(self, data):
         recipe_id = data.get('recipe_id')
+        user_id = data.get('user_id')
+
+        if recipe_id is None or user_id is None:
+            raise serializers.ValidationError(
+                'Необходимо предоставить recipe_id и user_id'
+            )
+
+        recipe = get_object_or_404(Recipe, id=recipe_id)
+        user = get_object_or_404(CustomUser, id=user_id)
+
+        return {'recipe': recipe, 'user': user}
+
+    def validate(self, data):
         user = data.get('user')
-        if user.favorites.filter(user=user, recipe_id=recipe_id).exists():
+        recipe = data.get('recipe')
+
+        if user.favorites.filter(recipe=recipe).exists():
             raise serializers.ValidationError(
                 'Этот рецепт уже есть в избранном'
             )
+
         return data
 
     def to_representation(self, instance):
-        return ShortRecipeSerializer(instance).data
+        return ShortRecipeSerializer(instance.recipe).data
 
 
 class RecipeIngredientGetSerializer(serializers.ModelSerializer):
@@ -258,6 +279,20 @@ class ShoppingCartSerializer(serializers.ModelSerializer):
         model = ShoppingCart
         fields = ('recipe', 'user')
 
+    def to_internal_value(self, data):
+        recipe_id = data.get('recipe_id')
+        user_id = data.get('user_id')
+
+        if recipe_id is None or user_id is None:
+            raise serializers.ValidationError(
+                'Необходимо предоставить recipe_id и user_id'
+            )
+
+        recipe = get_object_or_404(Recipe, id=recipe_id)
+        user = get_object_or_404(CustomUser, id=user_id)
+
+        return {'recipe': recipe, 'user': user}
+
     def validate(self, data):
         recipe = data.get('recipe')
         user = data.get('user')
@@ -302,31 +337,22 @@ class SubscriptionSerializer(CustomUserSerializer):
         return ShortRecipeSerializer(recipes, many=True).data
 
 
-class SubscribeSerializer(serializers.Serializer):
+class SubscribeSerializer(serializers.ModelSerializer):
     """Добавление и удаление подписок пользователя."""
     class Meta:
         model = Subscribe
-        fields = '__all__'
+        fields = ('id', 'author', 'user')
 
     def validate(self, data):
         user = data.get('user')
-        author = get_object_or_404(CustomUser, pk=self.context['id'])
+        author = data.get('author')
         if user == author:
             raise serializers.ValidationError(
-                'Вы не можете подписаться на себя'
+                'Нельзя подписаться на самого себя!'
             )
-        if Subscribe.objects.filter(user=user, author=author).exists():
+
+        if author.subscriber.filter(user=user).exists():
             raise serializers.ValidationError(
-                'Вы уже подписаны на этого пользователя'
+                'Вы уже подписаны на данного автора.'
             )
         return data
-
-    def create(self, validated_data):
-        user = self.context.get('request').user
-        author_id = self.context.get('id')
-        author = get_object_or_404(CustomUser, pk=author_id)
-        Subscribe.objects.create(user=user, author=author)
-        serializer = SubscriptionSerializer(
-            author, context={'request': self.context.get('request')}
-        )
-        return serializer.data
