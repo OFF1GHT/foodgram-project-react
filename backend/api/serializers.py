@@ -341,7 +341,7 @@ class SubscribeSerializer(serializers.ModelSerializer):
     """Добавление и удаление подписок пользователя."""
     class Meta:
         model = Subscribe
-        fields = ('id', 'author', 'user')
+        fields = ('author', 'user')
 
     def validate(self, data):
         user = data.get('user')
