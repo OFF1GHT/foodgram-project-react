@@ -149,8 +149,7 @@ class CustomUserViewSet(UserViewSet):
             return Response(serializer.data, status=status.HTTP_201_CREATED)
         subscription = get_object_or_404(Subscribe, user=user, author=author)
         subscription.delete()
-        return Response({'Успешная отписка'},
-                        status=status.HTTP_204_NO_CONTENT)
+        return Response(status=status.HTTP_204_NO_CONTENT)
 
     @action(
         methods=('get',),
