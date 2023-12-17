@@ -18,7 +18,7 @@ services:
     image: off1ght/foodgram_backend/
     env_file: .env
     volumes:
-      - static:/app/static/
+      - static:/static/
       - media:/app/media/
     depends_on:
       - db
@@ -27,7 +27,6 @@ services:
   frontend:
     env_file: .env
     image: off1ght/foodgram_frontend
-    #command: cp -r /app/build/. /frontend_static/
     volumes:
       - frontend:/app/build/
     restart: always

@@ -137,7 +137,6 @@ class CustomUserViewSet(UserViewSet):
             )
     def subscribe(self, request, id=None):
         """Добавление и удаление подписок пользователя."""
-
         user = self.request.user
         author = get_object_or_404(CustomUser, id=id)
         if request.method == 'POST':

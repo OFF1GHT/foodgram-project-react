@@ -324,17 +324,15 @@ class SubscriptionSerializer(CustomUserSerializer):
         )
 
     def get_recipes(self, obj):
-        limit = self.context.get('limit', None)
-        try:
-            limit = int(limit)
-        except (TypeError, ValueError):
-            limit = None
-        recipes = (
-            obj.recipes.all()[:limit]
-            if limit is not None
-            else obj.recipes.all()
-        )
-        return ShortRecipeSerializer(recipes, many=True).data
+        request = self.context.get('request')
+        limit_recipes = request.query_params.get('recipes_limit')
+        if limit_recipes is not None:
+            recipes = obj.recipes.all()[:(int(limit_recipes))]
+        else:
+            recipes = obj.recipes.all()
+        context = {'request': request}
+        return ShortRecipeSerializer(recipes, many=True,
+                                     context=context).data
 
 
 class SubscribeSerializer(serializers.ModelSerializer):
